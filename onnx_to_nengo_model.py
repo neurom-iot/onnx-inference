@@ -1,4 +1,3 @@
-import os
 import re
 import onnx
 import numpy as np
@@ -261,85 +260,10 @@ class toNengoModel:
 
 # 일반
 def objective(outputs, targets):
-   return tf.keras.nn.softmax_cross_entropy_with_logits_v2(logits=outputs, labels=targets)
+	return tf.keras.nn.softmax_cross_entropy_with_logits_v2(logits=outputs, labels=targets)
 
 def classification_error(outputs, targets):
-   return 100 * tf.reduce_mean(tf.cast(tf.not_equal(tf.argmax(outputs[:, -1], axis=-1), tf.argmax(targets[:, -1], axis=-1)), tf.float32))
+	return 100 * tf.reduce_mean(tf.cast(tf.not_equal(tf.argmax(outputs[:, -1], axis=-1), tf.argmax(targets[:, -1], axis=-1)), tf.float32))
 
 def classification_accuracy(y_true, y_pred):
     return tf.metrics.sparse_categorical_accuracy(y_true[:, -1], y_pred[:, -1])
-
-if __name__ == "__main__":
-    print('mnist data 준비')
-    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
-    print(train_images.shape, test_images.shape, train_labels.shape, test_labels.shape)
-
-    # flatten images
-    train_images = train_images.reshape((train_images.shape[0], -1))
-    test_images = test_images.reshape((test_images.shape[0], -1))
-
-    # to nengo 로 한거지
-    otn = toNengoModel("model/lenet-1_snn.onnx")
-    model = otn.get_model()
-    inp = otn.get_inputProbe()
-    pre_layer = otn.get_endLayer()
-
-    # 돌리는 것
-    with model:
-        out_p = nengo.Probe(pre_layer)
-        out_p_filt = nengo.Probe(pre_layer, synapse=0.01)
-
-    minibatch_size = 2000
-
-    # ----------------------------------------------------------- run
-    sim = nengo_dl.Simulator(model, minibatch_size=minibatch_size, device="/cpu:0")
-
-    # add single timestep to training data
-    train_images = train_images[:, None, :]
-    train_labels = train_labels[:, None, None]
-
-    # when testing our network with spiking neurons we will need to run it
-    # over time, so we repeat the input/target data for a number of
-    # timesteps.
-    n_steps = 30
-    test_images = np.tile(test_images[:, None, :], (1, n_steps, 1))
-    test_labels = np.tile(test_labels[:, None, None], (1, n_steps, 1))
-
-    print('-- train data, test data 준비 완료')
-    print('-- evaluate start')
-
-    # note that we use `out_p_filt` when testing (to reduce the spike noise)
-    sim.compile(loss={out_p_filt: classification_accuracy})
-
-    print("Accuracy before training:", sim.evaluate(test_images, {out_p_filt: test_labels}, verbose=0)["loss"],)
-
-    do_training = True
-    if do_training:
-        # run training
-        sim.compile(
-
-            optimizer=tf.optimizers.RMSprop(0.001),
-            loss={out_p: tf.losses.SparseCategoricalCrossentropy(from_logits=True)},
-        )
-        sim.fit(train_images, {out_p: train_labels}, epochs=1)
-
-        # save the parameters to file
-        sim.save_params("mnist_params")
-        print('save_params')
-    # else:
-    #     # download pretrained weights
-    #     urlretrieve(
-    #         "https://drive.google.com/uc?export=download&"
-    #         "id=1l5aivQljFoXzPP5JVccdFXbOYRv3BCJR",
-    #         "mnist_params.npz",
-    #     )
-    #
-    # # load parameters
-    # print('load_params')
-    # sim.load_params("./mnist_params")
-
-    sim.compile(loss={out_p_filt: classification_accuracy})
-    print("Accuracy after training:", sim.evaluate(test_images, {out_p_filt: test_labels}, verbose=0)['loss'],)
-    data = sim.predict(test_images[:minibatch_size])
-    sim.close()
-    print('simulator 종료')

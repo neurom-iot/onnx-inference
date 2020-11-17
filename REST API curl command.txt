@@ -1,0 +1,19 @@
+
+# ML 방법1 - iris 인자 직접입력
+curl -d "sepal_length=6.3&sepal_width=3.3&petal_length=6.0&petal_width=2.5&model_name=model/logreg_iris.onnx" -X GET http://localhost:5095
+
+# ML 방법2 - .npy
+curl -d "model_name=model/logreg_iris.onnx&test_file=test_data/iris_X_test.npy" -X GET http://localhost:5095
+
+# DL 방법1 - image
+curl -d "model_name=model/lenet-1.onnx&test_image=test_data/test_mnist_9.jpg" -X GET http://localhost:5095
+
+
+# DL 방법2 - .npy
+curl -d "model_name=model/lenet-1.onnx&test_file=test_data/mnist_X_test_10.npy" -X GET http://localhost:5095
+ 
+# SNN 방법1 - .npy
+curl -d "model_name=model/lenet-1_snn.onnx&test_file=test_data/mnist_X_test_10.npy" -X GET http://localhost:5095
+
+# SNN 방법2 - image
+curl -d "model_name=model/lenet-1_snn.onnx&test_image=test_data/test_mnist_5.jpg" -X GET http://localhost:5095
